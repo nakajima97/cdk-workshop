@@ -2,6 +2,7 @@ import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import { readFileSync } from 'fs';
+import * as rds from "aws-cdk-lib/aws-rds";
 
 export class CdkWorkshopStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -52,5 +53,24 @@ export class CdkWorkshopStack extends cdk.Stack {
 
     // ec2インスタンスにユーザーデータを追加
     webServer1.addUserData(userDataScript);
+
+    // どのdatabaseエンジンを使うか定義する
+    const engine = rds.DatabaseInstanceEngine.mysql({
+      version: rds.MysqlEngineVersion.VER_8_0_28
+    });
+
+    // rdsのインスタンスを定義する
+    const dbServer = new rds.DatabaseInstance(this, "WordPressDB", {
+      engine: engine,
+      vpc: vpc,
+      instanceType: ec2.InstanceType.of(ec2.InstanceClass.T2, ec2.InstanceSize.SMALL),
+      vpcSubnets: {
+        subnetType: ec2.SubnetType.PRIVATE_ISOLATED
+      },
+      databaseName: "wordpress"
+    });
+
+    // WebServerからのアクセスを許可します
+    dbServer.connections.allowDefaultPortFrom(webSecurityGroup);
   }
 }
